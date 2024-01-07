@@ -2,6 +2,7 @@ import os
 import openai
 from dotenv import load_dotenv
 from PyPDF2 import PdfReader
+from langchain.text_splitter import CharacterTextSplitter
 
 # env에서 Open API 키 가져오기
 load_dotenv()
@@ -19,6 +20,19 @@ def get_pdf_text(file_path):
             raw_text += text
     return raw_text
 
+
+def get_text_chunks(raw_text):
+    # langChain 에서 지원하는 spliter 사용하여 chunk 나누기
+    text_splitter = CharacterTextSplitter(
+        separator="\n",
+        chunk_size=512,
+        chunk_overlap=100,
+        length_function=len
+    )
+    chunks = text_splitter.split_text(raw_text)
+    return chunks
+
+
 def main():
 
     # Embedding 할 path 선택
@@ -28,6 +42,10 @@ def main():
 
     # Embedding 할 문서에서 Text 추출
     raw_text = get_pdf_text(file_path)
+
+    # 문서 Embedding을 위한 Chunk 준비
+    text_chunks = get_text_chunks(raw_text)
+
 
     # User Input을 받아서 대화를 생성
     while True:
