@@ -6,6 +6,9 @@ from chromadb.config import Settings
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.vectorstores import Chroma
+from langchain.chat_models import ChatOpenAI
+from langchain.memory import ConversationBufferMemory
+from langchain.chains import ConversationalRetrievalChain
 
 # env에서 Open API 키 가져오기
 load_dotenv()
@@ -80,6 +83,17 @@ def main():
     collection_name = "my_document"
     vectorstore = get_vectorstore(text_chunks, collection_name)
 
+    # 사용할 LLM 모델 생성, 편의를 위하여 Open AI API 사용
+    llm = ChatOpenAI()
+
+    # RAG 구현을 위하여, chat history를 저장할 BufferMemory 생성
+    memory = ConversationBufferMemory(memory_key='chat_history', return_messages=True)
+    # RAG를 위한 Retrieval Chain 생성 및 chat_history 바탕으로 대화 가능하도록 기능생성
+    conversation_chain = ConversationalRetrievalChain.from_llm(
+        llm=llm,
+        memory=memory,
+        retriever=vectorstore.as_retriever()
+    )
 
     # User Input을 받아서 대화를 생성
     while True:
@@ -89,6 +103,9 @@ def main():
         response = conversation_chain({"User Question: ": user_input})
         print("Bot Answer: " + response.answer)
 
+        # 대화 이력 업데이트
+        memory.load_memory_variables({})
+        
 if __name__ == '__main__':
     main()
 
