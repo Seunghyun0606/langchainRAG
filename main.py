@@ -2,7 +2,10 @@ import os
 import openai
 from dotenv import load_dotenv
 from PyPDF2 import PdfReader
+from chromadb.config import Settings
 from langchain.text_splitter import CharacterTextSplitter
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.vectorstores import Chroma
 
 # env에서 Open API 키 가져오기
 load_dotenv()
@@ -33,6 +36,33 @@ def get_text_chunks(raw_text):
     return chunks
 
 
+
+def get_vectorstore(text_chunks, collection_name):
+    # Embedding에 사용할 Embedding 모델 생성
+    # In-house 개발을 위해서는 모델을 직접 내려받아서 사용해야함
+    # embeddings = SentenceTransformerEmbeddings(model_name="hkunlp/instructor-large")
+    embeddings = OpenAIEmbeddings()
+
+    # Vector 스토어 생성. 편의성을 위하여 ChromaDB 사용
+    # local 에서 Docker 사용하여 Chroma DB 업로드 할 예정
+    # Docker에서 띄워놓지 않으면 데이터가 in-memory에서 휘발됨
+    client_settings = Settings(
+            # chroma_api_impl="rest",
+            chroma_server_host="localhost",
+            chroma_server_http_port="8000"
+        )
+    # metadata가 별도로 있는 document 집합이 아니므로, from_texts로 바로 Chroma에 embedding 저장
+    # FYI https://github.com/langchain-ai/langchain/issues/10622
+    vectorstore = Chroma.from_texts(
+        # documents=text_chunks
+        texts=text_chunks
+        ,embedding=embeddings
+        ,client_settings = client_settings
+        ,collection_name = collection_name
+    )
+    return vectorstore
+
+
 def main():
 
     # Embedding 할 path 선택
@@ -45,6 +75,10 @@ def main():
 
     # 문서 Embedding을 위한 Chunk 준비
     text_chunks = get_text_chunks(raw_text)
+
+    # Embedding 시작하기
+    collection_name = "my_document"
+    vectorstore = get_vectorstore(text_chunks, collection_name)
 
 
     # User Input을 받아서 대화를 생성
